@@ -4,43 +4,88 @@ import (
 	"time"
 	"fmt"
 	"net/http"
-	"math"
 )
 
-type WDate time.Time
-
-func NewWDate() WDate {
-	return WDate( time.Now().UTC() )
+type WDate struct {
+	tm		  time.Time
+	tmString  string
 }
 
-func ( tm WDate ) Verify( timeWindow * time.Duration ) error {
+func NewWDate() WDate {
+	return WDate(time.Now().UTC())
+}
 
-	// Now...see what the difference is between NOW and the HTTP date
-	diff := math.Abs(time.Now().Sub( time.Time( tm ) ).Minutes())        // We want how far in the past it is...
+/*
+ * Verify that the timestamp is within the timewindow, given in minutes.
+ */
+func (d * WDate) Verify( timeWindow int ) error {
+	var diff int
 
-	if diff > timeWindow.Minutes() {
-		return fmt.Errorf("%s - %.0f min. max/%.0f in header",
-			"Time is outside of window", timeWindow.Minutes(), diff)
+	now      := time.Now().UTC()
+	thisdate := d.tm.UTC()
+
+	if now.Before(thisdate) {
+		diff = int( thisdate.Sub(now).Minutes() )
+	}else {
+		diff = int(now.Sub(thisdate).Minutes())
+	}     // We want how far in the past it is...
+	if diff > 0 {
+		if diff > timeWindow  {
+			return fmt.Errorf("%s - %0d min. max/%d difference",
+				"Time is outside of window", timeWindow, diff)
+		}
 	}
 	return nil
 }
 
-
-func ( tm WDate ) Parse( dt string ) ( err error ) {
+/*
+ * Parse a datetime string and set the timestamp to that value
+ * Parm: string that matches http.TimeFormat or a standard
+ * Return: error or nil
+ */
+func (d * WDate) Parse(dt string) ( err error ) {
 	var t time.Time
-	t, err = http.ParseTime( dt )
+	d.original = dt
+	t, err = http.ParseTime(dt)
 	if err == nil {
-		tm = WDate( t)
+		d.tm = (WDate)(t.UTC())
 	}
 	return
 }
 
-func ( tm WDate ) Format( ) string {
-	return time.Time( tm ).UTC().Format( http.TimeFormat )
+/*
+ * Format the timestamp into an HTTP-standard time string
+ */
+func (d *WDate) Format() string {
+	return d.tm.UTC().Format(http.TimeFormat)
 }
 
-func ( tm WDate ) Set() {
-	tm = WDate( time.Now().UTC() )
+/*
+ * Set the timestamp to the current date/time
+ */
+func (d *WDate) Set() WDate {
+	d.tm = WDate(time.Now().UTC())
+	return d
 }
+
+/*
+ * Set the timestamp to the UTC value of the date/time passed
+ */
+func ( d * WDate ) SetTime( newTime time.Time ) *WDate {
+	d.tm = WDate( newTime.UTC() )
+	return d
+}
+
+/*
+ * Return the timetstamp in guaranteed UTC format
+ */
+func (d * WDate ) UTC() time.Time {
+	return ((time.Time)(d.tm)).UTC()
+}
+
+func ( d * WDate ) SourceTime() string {
+	return d.tmString
+}
+
 
 

@@ -10,30 +10,41 @@ import (
 
 
 func setDate( minutes int ) string {
-	offset := time.Duration(minutes) * time.Minute
-	return time.Now().UTC().Add( offset ).Format( http.TimeFormat)
+	offset := time.Duration(minutes ) * time.Minute
+	now := time.Now().UTC();
+	return now.Add( offset ).Format( http.TimeFormat)
 }
 
 func TestNewDate( t * testing.T ){
 	s := NewWDate()
-	duration, err := time.ParseDuration( "1 sec")
+	s.Set()
 
 	Convey( "Date should be good" , t , func(){
-		So( err, ShouldBeNil )
-		err:=s.Verify( duration )
+		err:=s.Verify( 1 )
 		So( err, ShouldBeNil )
 	})
 }
+
 
 func TestDate_OutsideRange( t * testing.T ){
 	var s WDate
 
-	Convey( "Date Future Date" , t , func(){
-		s.Parse( setDate( 20 ))
+	Convey( "Date Future." , t , func(){
+		s.Parse( setDate( 20 ) )
+		err:=s.Verify( 15 )
 
-		err:=s.Verify( s.Verify( &time.Duration(15 )) )
 		So( err, ShouldNotBeNil )
-
 	})
 }
+
+func TestDate_WithinRange( t * testing.T ){
+	var s WDate
+
+	Convey( "Date Future Date" , t , func(){
+		s.Set()
+		err:=s.Verify( 1 )
+		So( err, ShouldBeNil )
+	})
+}
+
 

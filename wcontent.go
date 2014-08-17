@@ -7,7 +7,7 @@ import (
 
 type WContent struct {
 	ContentType		string				// What is the Type of the main body (mine: text/json...)
-	ContentMD5  	string				// MD5 hash of the body
+	Signature  	string				// MD5 hash of the body
 	Content			string				// What is the main body of the request
 }
 
@@ -15,15 +15,32 @@ func NewContent() WContent {
 	return WContent{ Content : "" }
 }
 
+/*
+ * Set the content and format. Calculate the checksum
+ */
 func ( w * WContent ) Set( content , contentFormat string ) ( * WContent ){
-	w.Content     = content
 	w.ContentType = contentFormat
-	w.ContentMD5  = w.CalculateContentMD5();
+	w.SetContent( content )
 
 	return w
 }
 
-func ( w * WContent ) CalculateContentMD5() string {
+func ( w * WContent ) SetContent( content string ) * WContent {
+	w.Content = content
+	w.Signature = w.CalculateSignature()
+	return w
+}
+
+func ( w * WContent ) SetContentType( contentType string ) *WContent {
+	w.ContentType = contentType
+	return w
+}
+
+/*
+ * Calculate the signature of the content.
+ * Return: base64-encoded MD5 hash of the body
+ */
+func ( w * WContent ) CalculateSignature() string {
 	var sum string = ""
 	if len(w.Content) > 0 {
 		d := md5.New()
@@ -34,11 +51,14 @@ func ( w * WContent ) CalculateContentMD5() string {
 	return sum
 }
 
-
+/*
+ * Verify that the signature checksum is valid. If content is empty, true is returned.
+ * Return: bool - true if valid, false if not
+ */
 func ( w * WContent ) Verify() bool {
 	if w.Content != "" {
-		sum := w.CalculateContentMD5()
-		return sum == w.ContentMD5
+		sum := w.CalculateSignature()
+		return sum == w.Signature
 	}
 	return true
 }
