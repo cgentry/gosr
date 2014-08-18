@@ -17,7 +17,7 @@ func setDate( minutes int ) string {
 
 func TestNewDate( t * testing.T ){
 	s := NewWDate()
-	s.Set()
+	s.SetNow()
 
 	Convey( "Date should be good" , t , func(){
 		err:=s.Verify( 1 )
@@ -41,7 +41,7 @@ func TestDate_WithinRange( t * testing.T ){
 	var s WDate
 
 	Convey( "Date Future Date" , t , func(){
-		s.Set()
+		s.SetNow()
 		err:=s.Verify( 1 )
 		So( err, ShouldBeNil )
 	})

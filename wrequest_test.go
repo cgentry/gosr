@@ -11,7 +11,7 @@ func TestCreateRequest( t * testing.T ){
 	Convey( "Simple create" , t , func(){
 		So( c.Signature , ShouldEqual, "" )
 
-		c.Timestamp.Set()
+		c.Timestamp.SetNow()
 		So( c.Timestamp.Verify( 1 ), ShouldBeNil)
 
 		c.Content.Set("abc" , "test/json")

@@ -64,6 +64,10 @@ func NewRequest() * Request {
 	return &Request{ IsVerified : false }
 }
 
+/*
+ * The HTTP header date can be either encoded as Date: or Timestamp:
+ * The preferred method is Timestamp: as some systems will force Date: to be set.
+ */
 func (s * Request) GetHttpDateString(r * http.Request) ( string , error ) {
 	requestDate := r.Header.Get(HEADER_TIMESTAMP)        // Header has "Timestamp:"
 	if len(requestDate) == 0 {                    // Umm..NO
@@ -78,8 +82,6 @@ func (s * Request) GetHttpDateString(r * http.Request) ( string , error ) {
 
 /*
  * This will copy the contents of the http request over to the wrequest
- * Note that validation can occur as either an http.request or as a wrequest.
- * I recommend calling the method written here as it is much more generic
  */
 func (s * Request) CopyContent(r * http.Request ) ( err error ) {
 	defer r.Body.Close()
@@ -140,26 +142,21 @@ func ( s * Request ) CalculateSignature( secret []byte  ) ( string , error ){
 	return base64.StdEncoding.EncodeToString(mac.Sum( nil ) ), nil
 }
 
-func ( s * Request ) Verify( secret []byte )( err error ) {
+func (s * Request) Verify(secret []byte) ( err error ) {
 
 	if s.User == "" {
 		err = errors.New(TOKEN_MISSING_PARM)
-		
-	}else	if s.Signature == "" {
-		err = errors.New( TOKEN_MISSING)
-		
-	}else	if err = s.Content.Verify() ; err == nil {
+	}else if err = s.VerifyElements(timeWindow) ; err == nil {
 		var computed string
-		if err = s.Timestamp.Verify(  ); err == nil {
-			if computed,err = s.CalculateSignature( secret ); err == nil {
-		 		if ! hmac.Equal( []byte(s.Signature ), []byte( computed)){
-					err =  errors.New( SIGNATURE_INVALID)
-				}
+		if computed, err = s.CalculateSignature(secret); err == nil {
+			if !hmac.Equal([]byte(s.Signature), []byte(computed)) {
+				err = errors.New(SIGNATURE_INVALID)
 			}
 		}
+
 	}
 	s.IsVerified = ( err == nil )
-	return 
+	return
 }
 
 /*

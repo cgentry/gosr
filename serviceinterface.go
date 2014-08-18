@@ -1,6 +1,6 @@
-package http
+package gosr
 
-type HttpInterface interface {
+type ServiceInterface interface {
 	CalculateSignature( secret string ) string
 	Verify( secret []byte , timeWindow int ) error
 	GetUser() string
