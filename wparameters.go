@@ -66,32 +66,22 @@ func (w WParameters) JoinValues(key string) ( joined string) {
 	return
 }
 
-//typeTime := reflect.TypeOf( time.Time{} )
-var typeString  reflect.Type
-var typeStringArray	reflect.Type
-var 
+var typeTime 			reflect.Type
+var typeString  		reflect.Type
+var typeStringArray		reflect.Type
+var typeStringMap		reflect.Type
+
 func (w WParameters) Add(key string , value interface{}) ( err error ) {
 
 	typeOf := reflect.TypeOf( value )
 	switch typeOf{
 	default:
-		fmt.Printf( "Type is %s\n" , reflect.TypeOf(value) )
+		err = fmt.Errorf( "Value of type '%s' is invalid" ,reflect.TypeOf(value) )
+
 	case typeString :
-		fmt.Printf( "type is a string\n")
+		w[ key ] = append( w[key] , value.(string) )
 
-	case reflect.TypeOf( time.Time{}):
-		fmt.Printf( "type is time\n");
-
-	}
-	switch reflect.TypeOf(value).Kind() {
-
-	default:
-		err = fmt.Errorf( "Value of type '%T' is invalid" , value )
-
-	case reflect.String :
-		w[key] = append(w[ key ], value.(string))
-
-	case reflect.Slice:
+	case typeStringArray :
 		s := reflect.ValueOf(value)
 
 		for i := 0; i < s.Len(); i++ {
@@ -99,11 +89,17 @@ func (w WParameters) Add(key string , value interface{}) ( err error ) {
 				break
 			}
 		}
+
+	//case typeStringMap :
+
 	}
 
 	return
 }
 
 func init() {
-	typeString = reflect.TypeOf( "" )
+	typeString 		= reflect.TypeOf( "" )
+	typeStringArray = reflect.TypeOf( []string{})
+	typeStringMap   = reflect.TypeOf( map[string]string{})
+	typeTime 		= reflect.TypeOf( time.Time{} )
 }
