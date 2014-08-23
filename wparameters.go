@@ -10,7 +10,7 @@ import (
 type WParameters map[string][]string
 
 func NewWParameters() WParameters {
-	return WParameters{}
+	return make( WParameters )
 }
 
 func (v WParameters) Get(key string) string {

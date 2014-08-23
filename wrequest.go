@@ -26,13 +26,13 @@ type WRequest struct {
 	Timestamp   	WDate				// When this request was made
 	Content			WContent			// Data for content
 
-	Parameters		WParameters			// A map, keyed by a string of an array of strings
+	Parameters		*WParameters			// A map, keyed by a string of an array of strings
 										// Parameters can have multiple values
 
 }
 
 func NewWRequest() WRequest {
-	return WRequest{ IsVerified : false }
+	return WRequest{ IsVerified : false , Parameters : new( WParameters )}
 }
 
 func ( w * WRequest ) GetUser() string {
