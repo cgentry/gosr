@@ -5,42 +5,31 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"strings"
 )
 
-/*
- * This is the Service Request definition for remote reqeuests into a service provider.
- * The source of the request can come from anywhere, but all the data must be filled in
- * in order to pass the data around.
- */
 
-type WRequest struct {
-	IsVerified 		bool				// Signature is verified
+type WResponse struct {
+	IsVerified		bool
 	Signature		string				// The HMAC signature for all elements
-
-	User			string				// The user-id making the call
-
-	Action			string				// Get/Put/Delete/ etc
-	Operation       string				// What task do you want done? Register, Store, etc.
 
 	Timestamp   	*WDate				// When this request was made
 	Content			WContent			// Data for content
 
 	Parameters		*WParameters			// A map, keyed by a string of an array of strings
-										// Parameters can have multiple values
+	// Parameters can have multiple values
 
 }
 
-func NewWRequest() *WRequest {
-	w := new( WRequest )
+
+func NewWResponse() *WResponse {
+	w := new( WResponse )
 	w.Initialise()
 	return w
 }
 
-func( w * WRequest ) Initialise() {
+func( w * WResponse ) Initialise() {
 	w.IsVerified = false
 	w.Timestamp  = NewWDate()
-
 	w.Parameters = new(WParameters)
 }
 
@@ -49,33 +38,24 @@ func( w * WRequest ) Initialise() {
  * ------------------------------------------------
  */
 
-// GetUser - Return the trimmed user string
-func ( w * WRequest ) GetUser() string {
-	return strings.TrimSpace(w.User)
-}
-
 // GetSignature - Return the signature that was sent to us
-func ( w * WRequest ) GetSignature() string {
+func ( w * WResponse ) GetSignature() string {
 	return w.Signature
 }
-
 
 /* ------------------------------------------------
  * Interface requirements
  * ------------------------------------------------
  */
 
-
 // CalculateSignature - Create an HMAC signed value from the data in the request block
-func ( w * WRequest ) CalculateSignature( secret []byte ) ( string , error ){
+// This does not use the full content body but only the content signature for the hash
+func ( w * WResponse ) CalculateSignature( secret []byte ) string {
 
 	mac := hmac.New( sha256.New , secret )						// Setup with secret key
-	mac.Write( []byte( w.GetUser() ) )							// + Add in user ID
 	mac.Write( []byte( w.Timestamp.SourceTime()))				// + in date string
 	mac.Write( []byte( w.Content.Signature))					// + MD5 value of content (as stored)
 	mac.Write( []byte( w.Content.ContentType))					// + Content-Type
-	mac.Write( []byte( w.Action ))								// + Action string
-	mac.Write( []byte( w.Operation ))							// + what operation to perform
 
 	// Now...parameter strings
 	sortedKeys := w.Parameters.SortedKeys()
@@ -83,20 +63,24 @@ func ( w * WRequest ) CalculateSignature( secret []byte ) ( string , error ){
 		mac.Write( []byte( key + ":" + w.Parameters.Join( key )))
 	}
 
-	return base64.StdEncoding.EncodeToString(mac.Sum( nil ) ), nil
+	return base64.StdEncoding.EncodeToString(mac.Sum( nil ) )
+}
+
+func( w * WResponse ) Sign( secret []byte ) * WResponse {
+	w.Content.Sign()
+	w.Signature = w.CalculateSignature( secret )
+	return w
 }
 
 // Verify - Verify that the signature in the request block is the same as one calculated
-func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) error {
+func ( w * WResponse ) Verify( secret []byte  , timeWindow int ) error {
 	w.IsVerified = false
 	if len( secret ) == 0 {
 		return errors.New( "Secret cannot be zero-length" )
 	}
 	w.VerifyElements( timeWindow )
-	sig,err := w.CalculateSignature( secret )
-	if err != nil {
-		return err
-	}
+	sig := w.CalculateSignature( secret )
+
 	if ! hmac.Equal([]byte(w.Signature ), []byte( sig)){
 		return errors.New("Signature doesn't verify")
 	}
@@ -107,7 +91,7 @@ func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) error {
  * Any base elements that need to be verified should be done here.
  * This will verify just the timestamp and contents
  */
-func ( w * WRequest ) VerifyElements( timeWindow int ) ( err error ) {
+func ( w * WResponse ) VerifyElements( timeWindow int ) ( err error ) {
 	if err = w.Timestamp.Verify( timeWindow); err == nil {
 		if ! w.Content.Verify() {
 			err = errors.New( "Content checksum doesn't match")
@@ -117,5 +101,4 @@ func ( w * WRequest ) VerifyElements( timeWindow int ) ( err error ) {
 	}
 	return
 }
-
 

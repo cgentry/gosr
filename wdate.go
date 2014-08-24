@@ -14,8 +14,8 @@ type WDate struct {
 /*
  * Return a new date value initialised to the current time
  */
-func NewWDate() WDate {
-	w := WDate{}
+func NewWDate() *WDate {
+	w := new( WDate )
 	w.SetNow()
 	return w
 }

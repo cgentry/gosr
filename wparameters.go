@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -52,16 +53,11 @@ func (w WParameters) SortedKeys() ( optionKeys []string ) {
 }
 
 /*
- * Each parameter can be multiple values. This will return a string with all the values
- * comma separated.
+ * Join will take all the strings for a single key and join them with a semi-colon
  */
-func (w WParameters) JoinValues(key string) ( joined string) {
-	for _, value := range (w)[key] {
-		if joined == "" {
-			joined = value
-		}else {
-			joined = joined+","+value
-		}
+func (w WParameters) Join(key string) ( joined string) {
+	if _,ok := w[key]; ok {
+		joined = strings.Join( w[key] , `;`)
 	}
 	return
 }

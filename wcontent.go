@@ -7,12 +7,12 @@ import (
 
 type WContent struct {
 	ContentType		string				// What is the Type of the main body (mine: text/json...)
-	Signature  	string				// MD5 hash of the body
+	Signature  		string				// MD5 hash of the body
 	Content			string				// What is the main body of the request
 }
 
-func NewContent() WContent {
-	return WContent{ Content : "" }
+func NewContent() *WContent {
+	return new( WContent )
 }
 
 /*
@@ -31,9 +31,16 @@ func ( w * WContent ) SetContent( content string ) * WContent {
 	return w
 }
 
+func ( w * WContent ) GetContent( content string ) string {
+	return w.Content
+}
+
 func ( w * WContent ) SetContentType( contentType string ) *WContent {
 	w.ContentType = contentType
 	return w
+}
+func ( w * WContent ) GetContentType( contentType string ) string {
+	return w.ContentType
 }
 
 /*
@@ -49,6 +56,12 @@ func ( w * WContent ) CalculateSignature() string {
 		sum = base64.StdEncoding.EncodeToString(m5)
 	}
 	return sum
+}
+
+// Sign - sign the content
+func ( w *WContent ) Sign() * WContent {
+	w.Signature = w.CalculateSignature()
+	return w
 }
 
 /*

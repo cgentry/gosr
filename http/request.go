@@ -18,16 +18,7 @@ type Request struct {
 	RawParam []string
 }
 
-const (
-	HEADER_TIMESTAMP = "Timestamp"
-	HEADER_DATE      = "Date"
-	HEADER_TOKEN     = "Authorization"
-	HEADER_MD5       = "Content-MD5"
-	HEADER_TYPE      = "Content-Type"
 
-	PARAMETER_QUERY  = "Query"
-
-)
 
 /* ===============================================================
  *               PRIVATE FUNCTIONS
@@ -65,8 +56,7 @@ func (s * Request) getUri(r * http.Request) string {
  */
 
 func NewRequest() * Request {
-	rtn :=  &Request{ }
-	rtn.IsVerified = false
+	rtn :=  new( Request )
 	return rtn
 }
 
@@ -193,31 +183,6 @@ func (s * Request) Decode(r * http.Request , extraPrefix string ) ( err error ) 
 	}
 	return
 }
-
-/**
- * Create a signature value from the request, user and secret and body
- */
-/*
-func (s * Request) CalculateSignature(r * http.Request , user string , secret , body []byte) ( string , error ) {
-
-	if len(secret) == 0 {
-		return "", errors.New(SECRET_INVALID)
-	}
-	dt, err := s.GetDateString(r)
-	if err != nil {
-		return "", err
-	}
-	mac := hmac.New(sha256.New, secret)                    // Setup with secret key
-	mac.Write([]byte(strings.TrimSpace(user)))            // Add in user ID
-	mac.Write([]byte(dt))                                    // Add in DATE
-	mac.Write([]byte(CalculateContentMD5(body)))            // Add in the MD5 calculate value
-	mac.Write([]byte(r.Header.Get(GAV_HEADER_TYPE)))    // Add in Content-Type from header
-	mac.Write([]byte(s.getUri(r)))                        // add in the re-constituted URI
-	mac.Write(GetAppHeaderValues(r.Header, s.appPrefix))    // Add in all the 'special' headers
-
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
-}
-*/
 
 
 
