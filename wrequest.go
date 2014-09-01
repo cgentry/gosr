@@ -4,8 +4,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
+
+	"fmt"
 	"strings"
+	"net/http"
 )
 
 /*
@@ -26,7 +28,7 @@ type WRequest struct {
 	Timestamp   	*WDate				// When this request was made
 	Content			WContent			// Data for content
 
-	Parameters		*WParameters			// A map, keyed by a string of an array of strings
+	Parameters		WParameters			// A map, keyed by a string of an array of strings
 										// Parameters can have multiple values
 
 }
@@ -40,9 +42,13 @@ func NewWRequest() *WRequest {
 func( w * WRequest ) Initialise() {
 	w.IsVerified = false
 	w.Timestamp  = NewWDate()
-
-	w.Parameters = new(WParameters)
+	w.Parameters = NewWParameters()
 }
+
+func ( w * WRequest ) String() string {
+	return fmt.Sprintf( "User: %s Action: '%s' Time: '%s'\n" , w.GetUser() , w.Action , w.Timestamp.SourceTime())
+}
+
 
 /* ------------------------------------------------
  * Getters and setters are here
@@ -67,7 +73,7 @@ func ( w * WRequest ) GetSignature() string {
 
 
 // CalculateSignature - Create an HMAC signed value from the data in the request block
-func ( w * WRequest ) CalculateSignature( secret []byte ) ( string , error ){
+func ( w * WRequest ) CalculateSignature( secret []byte ) ( string , * Error ){
 
 	mac := hmac.New( sha256.New , secret )						// Setup with secret key
 	mac.Write( []byte( w.GetUser() ) )							// + Add in user ID
@@ -87,10 +93,10 @@ func ( w * WRequest ) CalculateSignature( secret []byte ) ( string , error ){
 }
 
 // Verify - Verify that the signature in the request block is the same as one calculated
-func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) error {
+func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) * Error {
 	w.IsVerified = false
 	if len( secret ) == 0 {
-		return errors.New( "Secret cannot be zero-length" )
+		return NewErrorWithText( http.StatusInternalServerError,  "Secret cannot be zero-length" )
 	}
 	w.VerifyElements( timeWindow )
 	sig,err := w.CalculateSignature( secret )
@@ -98,7 +104,7 @@ func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) error {
 		return err
 	}
 	if ! hmac.Equal([]byte(w.Signature ), []byte( sig)){
-		return errors.New("Signature doesn't verify")
+		return NewErrorWithText( http.StatusBadRequest , "Signature doesn't verify")
 	}
 	w.IsVerified = true
 	return nil
@@ -107,15 +113,16 @@ func ( w * WRequest ) Verify( secret []byte  , timeWindow int ) error {
  * Any base elements that need to be verified should be done here.
  * This will verify just the timestamp and contents
  */
-func ( w * WRequest ) VerifyElements( timeWindow int ) ( err error ) {
+func ( w * WRequest ) VerifyElements( timeWindow int ) ( err * Error ) {
 	if err = w.Timestamp.Verify( timeWindow); err == nil {
 		if ! w.Content.Verify() {
-			err = errors.New( "Content checksum doesn't match")
+			err = NewErrorWithText( http.StatusBadRequest , "Content checksum doesn't match")
 		}else if w.Signature == "" {
-			err = errors.New( "No Signature is present")
+			err = NewErrorWithText( http.StatusBadRequest , "No Signature is present")
 		}
 	}
 	return
 }
+
 
 

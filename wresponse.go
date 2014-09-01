@@ -4,11 +4,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
+
+	"net/http"
 )
 
 
 type WResponse struct {
+	Status			*Error				// General error return
+	StatusText		string				// Text response
+
 	IsVerified		bool
 	Signature		string				// The HMAC signature for all elements
 
@@ -28,6 +32,8 @@ func NewWResponse() *WResponse {
 }
 
 func( w * WResponse ) Initialise() {
+	w.Status	 = http.StatusOK
+	w.StatusText = http.StatusText( http.StatusOK)
 	w.IsVerified = false
 	w.Timestamp  = NewWDate()
 	w.Parameters = new(WParameters)
@@ -73,32 +79,36 @@ func( w * WResponse ) Sign( secret []byte ) * WResponse {
 }
 
 // Verify - Verify that the signature in the request block is the same as one calculated
-func ( w * WResponse ) Verify( secret []byte  , timeWindow int ) error {
+func (w * WResponse) Verify(secret []byte  , timeWindow int) error {
 	w.IsVerified = false
-	if len( secret ) == 0 {
-		return errors.New( "Secret cannot be zero-length" )
-	}
-	w.VerifyElements( timeWindow )
-	sig := w.CalculateSignature( secret )
+	if len(secret) == 0 {
+		w.Status = NewErrorWithText(http.StatusInternalServerError, "Secret cannot be zero-length")
+	}else {
+		w.VerifyElements(timeWindow)
+		sig := w.CalculateSignature(secret)
 
-	if ! hmac.Equal([]byte(w.Signature ), []byte( sig)){
-		return errors.New("Signature doesn't verify")
+		if !hmac.Equal([]byte(w.Signature), []byte(sig)) {
+			w.Status = NewError(http.StatusUnauthorized)
+		}else {
+			w.IsVerified = true
+		}
 	}
-	w.IsVerified = true
-	return nil
+	return w.Status
 }
 /*
  * Any base elements that need to be verified should be done here.
  * This will verify just the timestamp and contents
  */
-func ( w * WResponse ) VerifyElements( timeWindow int ) ( err error ) {
-	if err = w.Timestamp.Verify( timeWindow); err == nil {
+func ( w * WResponse ) VerifyElements( timeWindow int ) error  {
+	if err := w.Timestamp.Verify( timeWindow); err != nil {
+		w.Status = NewErrorWithText( http.StatusUnauthorized , err.Error() )
+	}else{
 		if ! w.Content.Verify() {
-			err = errors.New( "Content checksum doesn't match")
+			w.Status = NewErrorWithText( http.StatusUnauthorized , "Content checksum doesn't match")
 		}else if w.Signature == "" {
-			err = errors.New( "No Signature is present")
+			w.Status = NewErrorWithText( http.StatusBadRequest , "No Signature is present")
 		}
 	}
-	return
+	return w.Status
 }
 

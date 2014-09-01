@@ -52,6 +52,15 @@ func (w WParameters) SortedKeys() ( optionKeys []string ) {
 	return
 }
 
+func ( w WParameters ) IsPresent( parms []string ) * Error {
+	for _,key := range parms {
+		if _,found := w[key] ; ! found {
+			return NewErrorWithText( http.StatusBadRequest , "Missing " + key + " parameter")
+		}
+	}
+	return nil
+}
+
 /*
  * Join will take all the strings for a single key and join them with a semi-colon
  */

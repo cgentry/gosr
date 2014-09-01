@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"github.com/cgentry/gosr"
 	"io/ioutil"
 	"net/http"
@@ -24,16 +23,16 @@ type Request struct {
  *               PRIVATE FUNCTIONS
  * ===============================================================
  */
-func (s * Request) decodeAuth(r * http.Request) error {
+func (s * Request) decodeAuth(r * http.Request) * gosr.Error {
 
 	parts := strings.SplitN(r.Header.Get(`Authorization`), ":", 2)
 	if len(parts) < 2 {
-		return errors.New(TOKEN_INCOMPLETE)
+		return gosr.NewErrorWithText( http.StatusBadRequest , gosr.TOKEN_INCOMPLETE)
 	}
 	s.User = strings.TrimSpace(parts[0])
 	s.Signature = strings.TrimSpace(parts[1])
 	if len(s.WRequest.User) == 0 || len(s.Signature) == 0 {
-		return errors.New(TOKEN_MISSING_PARM)
+		return gosr.NewErrorWithText( http.StatusBadRequest , gosr.TOKEN_MISSING_PARM)
 	}
 	return nil
 }
@@ -57,20 +56,26 @@ func (s * Request) getUri(r * http.Request) string {
 
 func NewRequest() * Request {
 	rtn :=  new( Request )
-	return rtn
+
+	return rtn.Initialise()
+}
+
+func ( r * Request ) Initialise() * Request {
+	r.WRequest.Initialise()
+	return r
 }
 
 /*
  * The HTTP header date can be either encoded as Date: or Timestamp:
  * The preferred method is Timestamp: as some systems will force Date: to be set.
  */
-func (s * Request) GetHttpDateString(r * http.Request) ( string , error ) {
+func (s * Request) GetHttpDateString(r * http.Request) ( string , * gosr.Error ) {
 	requestDate := r.Header.Get(HEADER_TIMESTAMP)        // Header has "Timestamp:"
-	if len(requestDate) == 0 {                    // Umm..NO
-		requestDate = r.Header.Get(HEADER_DATE)        // Header has "Date:" ?
+	if len(requestDate) == 0 {                    		// Umm..NO
+		requestDate = r.Header.Get(HEADER_DATE)        	// Header has "Date:" ?
 
 		if len(requestDate) == 0 {
-			return "", errors.New(TIMESTAMP_MISSING)
+			return "", gosr.NewErrorWithText( http.StatusBadRequest , gosr.TIMESTAMP_MISSING)
 		}
 	}
 	return requestDate, nil
@@ -79,17 +84,19 @@ func (s * Request) GetHttpDateString(r * http.Request) ( string , error ) {
 /*
  * This will copy the contents of the http request over to the wrequest
  */
-func (s * Request) CopyContent(r * http.Request ) ( err error ) {
+func (s * Request) CopyContent(r * http.Request ) ( error * gosr.Error ) {
 	defer r.Body.Close()
-	var body []byte
-	body, err = ioutil.ReadAll(r.Body)
+
+	body, err := ioutil.ReadAll(r.Body)
 	if err == nil {
 		s.Content.Content = string(body)					// Copy the body over
 		s.Content.ContentType = r.Header.Get(HEADER_TYPE)   // Content type
 		s.Content.Signature = r.Header.Get(HEADER_MD5)      // Signature of content
 		if !s.Content.Verify() {                            // + and verify
-			err = errors.New(MD5_MISMATCH)
+			error = gosr.NewErrorWithText( http.StatusBadRequest, gosr.MD5_MISMATCH)
 		}
+	}else{
+		error = gosr.NewErrorWithText( http.StatusBadRequest , err.Error() )
 	}
 	return
 }
@@ -118,10 +125,10 @@ func ( s * Request ) CopyParameters( r * http.Request, extraPrefix string ) {
 /**
  * Create a signature value from the request, user and secret and body
  */
-func ( s * Request ) CalculateSignature( secret []byte  ) ( string , error ){
+func ( s * Request ) CalculateSignature( secret []byte  ) ( string , * gosr.Error ){
 
 	if len( secret ) == 0 {
-		return "", errors.New( SECRET_INVALID )
+		return "", gosr.NewErrorWithText( http.StatusInternalServerError ,gosr.SECRET_INVALID )
 	}
 
 	mac := hmac.New( sha256.New , secret )					// Setup with secret key
@@ -142,15 +149,15 @@ func ( s * Request ) CalculateSignature( secret []byte  ) ( string , error ){
 	return base64.StdEncoding.EncodeToString(mac.Sum( nil ) ), nil
 }
 
-func (s * Request) Verify(secret []byte , timeWindow int ) ( err error ) {
+func (s * Request) Verify(secret []byte , timeWindow int ) ( err * gosr.Error ) {
 
 	if s.User == "" {
-		err = errors.New(TOKEN_MISSING_PARM)
+		err = gosr.NewErrorWithText( http.StatusBadRequest ,gosr.TOKEN_MISSING_PARM)
 	}else if err = s.VerifyElements(timeWindow) ; err == nil {
 		var computed string
 		if computed, err = s.CalculateSignature(secret); err == nil {
 			if !hmac.Equal([]byte(s.Signature), []byte(computed)) {
-				err = errors.New(SIGNATURE_INVALID)
+				err = gosr.NewErrorWithText( http.StatusForbidden ,gosr.SIGNATURE_INVALID)
 			}
 		}
 
@@ -164,7 +171,7 @@ func (s * Request) Verify(secret []byte , timeWindow int ) ( err error ) {
  * and move the body over. All the data is set at once.
  * This will perform the verification at the same time
  */
-func (s * Request) Decode(r * http.Request , extraPrefix string ) ( err error ) {
+func (s * Request) Decode(r * http.Request , extraPrefix string ) ( err * gosr.Error ) {
 	s.IsVerified = false
 	if err = s.decodeAuth(r); err == nil {                            // Set UserID and Signature
 		var dt string
@@ -175,6 +182,7 @@ func (s * Request) Decode(r * http.Request , extraPrefix string ) ( err error ) 
 					
 					s.Action    = r.Method							  // Get/Put....
 					s.Operation = r.URL.Path				      	  // Path
+					s.RawQuery  = r.URL.RawQuery
 
 					// Add in the 'extra' parameters
 				}

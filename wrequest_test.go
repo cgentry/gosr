@@ -12,7 +12,7 @@ func TestCreateRequest( t * testing.T ){
 		So( c.Signature , ShouldEqual, "" )
 
 		c.Timestamp.SetNow()
-		So( c.Timestamp.Verify( 1 ), ShouldBeNil)
+		So( c.Timestamp.Verify( 2 ), ShouldBeNil)
 
 		c.Content.Set("abc" , "test/json")
 		So( c.Content.Content, ShouldEqual, "abc")

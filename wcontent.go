@@ -3,6 +3,7 @@ package gosr
 import (
 	"crypto/md5"
 	"encoding/base64"
+
 )
 
 type WContent struct {

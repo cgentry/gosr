@@ -37,8 +37,10 @@ func TestUserParams( t * testing.T ){
 	err := s.Decode( r , "Extra")
 
 	Convey( "Make sure parms were copied" , t , func() {
-		So( err , ShouldBeNil )
-		So( s.Action , ShouldEqual , "POST")
+		So( err        , ShouldBeNil )
+		So( r.URL.RawQuery , ShouldEqual, "a=b&c=d")
+
+		So( s.Action   , ShouldEqual , "POST")
 		So( s.Operation, ShouldEqual , "/test/rqst")
 		So( s.RawQuery , ShouldEqual , "a=b&c=d")
 	})

@@ -23,7 +23,7 @@ func NewWDate() *WDate {
 /*
  * Verify that the timestamp is within the timewindow, given in minutes.
  */
-func (d * WDate) Verify( timeWindow int ) error {
+func (d * WDate) Verify( timeWindow int ) *Error {
 	var diff int
 
 	now      := time.Now().UTC()
@@ -36,8 +36,9 @@ func (d * WDate) Verify( timeWindow int ) error {
 	}     // We want how far in the past it is...
 	if diff > 0 {
 		if diff > timeWindow  {
-			return fmt.Errorf("%s - %0d min. max/%d difference",
+			txt := fmt.Sprintf("%s - %0d min. max/%d difference",
 				"Time is outside of window", timeWindow, diff)
+			return NewErrorWithText( http.StatusForbidden , txt)
 		}
 	}
 	return nil
@@ -48,15 +49,16 @@ func (d * WDate) Verify( timeWindow int ) error {
  * Parm: string that matches http.TimeFormat or a standard
  * Return: error or nil
  */
-func (d * WDate) Parse(dt string) ( err error ) {
-	var t time.Time
+func (d * WDate) Parse(dt string) * Error {
 
-	t, err = http.ParseTime(dt)
-	if err == nil {
+	t, err := http.ParseTime(dt)
+	if err != nil {
+		return NewErrorWithText( http.StatusBadRequest , err.Error() )
+	}
 		d.tm = t.UTC()
 		d.tmString = dt
-	}
-	return
+
+	return nil
 }
 
 /*

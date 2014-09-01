@@ -1,6 +1,9 @@
 package http
 
 const (
+	INVALID_USER_PWD =  "Invalid user or password"
+	INVALID_SUBSCRIBER = "Invalid subscriber or password"
+
 	TOKEN_INCOMPLETE =  "Authorization token is incomplete."
 	TOKEN_MISSING_PARM = "Authorization token is missing userid or hmac value"
 	TOKEN_MISSING = "Authorization token is missing"
